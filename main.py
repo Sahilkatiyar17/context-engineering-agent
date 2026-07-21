@@ -36,15 +36,22 @@ class ResearchAgentApp:
 
 
 if __name__ == "__main__":
-    TracingConfigurator.configure()
+    TracingConfigurator.configure()   # project is fixed now, called once
+
+    EXPERIMENT_ID = "basic_agent"     # this now becomes trace metadata, not a project name
 
     app = ResearchAgentApp()
     exp_logger = ExperimentLogger()
 
     question = "What is PPO in reinforcement learning?"
-    result_state = app.graph.run(question)  # use graph.run directly to get full state, not just .answer
+    result_state = app.graph.run(question, experiment_id=EXPERIMENT_ID, strategy="raw_search_no_memory")
 
-    exp_logger.log(experiment_id="phase1_baseline", strategy="raw_search_no_memory", state=result_state)
+    exp_logger.log(
+        experiment_id=EXPERIMENT_ID,
+        strategy="raw_search_no_memory",
+        state=result_state,
+    )
 
-    print("\n--- ANSWER ---")
+    print(f"\nexperiment_id={EXPERIMENT_ID}")
+    print("--- ANSWER ---")
     print(result_state.answer)

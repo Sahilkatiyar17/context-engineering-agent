@@ -6,7 +6,7 @@ import logging
 from pathlib import Path
 from datetime import datetime, timezone
 
-from pydantic import BaseModel
+from pydantic import BaseModel,Field
 
 from app.agents.state import AgentState
 from app.utils.exception import AgentException
@@ -17,11 +17,13 @@ EXPERIMENTS_DIR = Path("experiments")
 RESULTS_FILE = EXPERIMENTS_DIR / "results.jsonl"
 
 
-class ExperimentRecord(BaseModel):
-    """One row of experiment data -- one run, one strategy, one question."""
+import uuid
+# ... existing imports stay
 
+class ExperimentRecord(BaseModel):
     timestamp: str
     experiment_id: str
+    run_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     strategy: str
     question: str
     answer: str

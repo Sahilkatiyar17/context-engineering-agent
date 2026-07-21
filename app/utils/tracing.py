@@ -32,3 +32,5 @@ class TracingConfigurator:
         os.environ["LANGCHAIN_ENDPOINT"] = settings.langsmith_endpoint
 
         logger.info(f"LangSmith tracing enabled -- project={settings.langsmith_project}")
+        
+    

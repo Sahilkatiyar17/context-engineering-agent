@@ -48,12 +48,17 @@ class ResearchAgentGraph:
         except Exception as e:
             raise AgentException(e, sys) from e
 
-    def run(self, question: str) -> AgentState:
-        """Runs the full graph for a single question and returns the final state."""
+    def run(self, question: str, experiment_id: str = "default", strategy: str = "unspecified") -> AgentState:
         try:
             logger.info(f"Running graph for question: {question!r}")
             initial_state = AgentState(question=question)
-            result = self._graph.invoke(initial_state)
+
+            config = {
+                "tags": [experiment_id, strategy],
+                "metadata": {"experiment_id": experiment_id, "strategy": strategy},
+            }
+
+            result = self._graph.invoke(initial_state, config=config)
             return AgentState(**result)
         except Exception as e:
             raise AgentException(e, sys) from e
