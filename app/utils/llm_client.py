@@ -50,3 +50,17 @@ class LLMClient:
             return response.content
         except Exception as e:
             raise AgentException(e, sys) from e
+    
+    def invoke_with_usage(self, messages: list[BaseMessage]) -> dict:
+        """Like invoke(), but also returns token usage -- used by the experiment logger."""
+        try:
+            response = self._llm.invoke(messages)
+            usage = response.response_metadata.get("token_usage", {})
+            return {
+                "text": response.content,
+                "prompt_tokens": usage.get("prompt_tokens"),
+                "completion_tokens": usage.get("completion_tokens"),
+                "total_tokens": usage.get("total_tokens"),
+            }
+        except Exception as e:
+            raise AgentException(e, sys) from e

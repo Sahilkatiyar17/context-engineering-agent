@@ -5,6 +5,8 @@ import logging
 
 from app.agents.graph import ResearchAgentGraph
 from app.utils.exception import AgentException
+from app.utils.tracing import TracingConfigurator
+from app.evaluation.experiment_logger import ExperimentLogger
 
 # Importing this configures logging as a side effect (see app/utils/logger.py)
 import app.utils.logger  # noqa: F401
@@ -34,8 +36,15 @@ class ResearchAgentApp:
 
 
 if __name__ == "__main__":
+    TracingConfigurator.configure()
+
     app = ResearchAgentApp()
+    exp_logger = ExperimentLogger()
+
     question = "What is PPO in reinforcement learning?"
-    answer = app.ask(question)
+    result_state = app.graph.run(question)  # use graph.run directly to get full state, not just .answer
+
+    exp_logger.log(experiment_id="phase1_baseline", strategy="raw_search_no_memory", state=result_state)
+
     print("\n--- ANSWER ---")
-    print(answer)
+    print(result_state.answer)

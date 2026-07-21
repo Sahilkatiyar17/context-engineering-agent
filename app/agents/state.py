@@ -25,6 +25,8 @@ class AgentState(BaseModel):
     question: str
     search_results: list[SearchResult] = Field(default_factory=list)
     answer: Optional[str] = None
+    total_tokens: Optional[int] = None
+    latency_seconds: Optional[float] = None
 
     def has_results(self) -> bool:
         return len(self.search_results) > 0

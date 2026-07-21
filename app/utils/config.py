@@ -16,6 +16,10 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         extra="ignore",
     )
+    langsmith_tracing: bool = False
+    langsmith_api_key: str = ""
+    langsmith_project: str = "context-engineering-agent"
+    langsmith_endpoint: str = "https://api.smith.langchain.com"
 
     # LLM (Groq)
     groq_api_key: str

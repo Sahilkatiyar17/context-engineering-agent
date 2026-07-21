@@ -2,7 +2,7 @@
 
 import sys
 import logging
-
+import time
 from langchain_core.messages import SystemMessage, HumanMessage
 
 from app.agents.state import AgentState
@@ -38,13 +38,22 @@ class AgentNodes:
         except Exception as e:
             raise AgentException(e, sys) from e
 
+    
+
     def llm_node(self, state: AgentState) -> dict:
-        """Builds a prompt from the question + search results, calls the LLM, attaches the answer."""
         try:
             logger.info(f"[llm_node] building answer from {len(state.search_results)} results")
             messages = self._build_messages(state)
-            answer = self.llm_client.invoke(messages)
-            return {"answer": answer}
+
+            start = time.perf_counter()
+            result = self.llm_client.invoke_with_usage(messages)
+            elapsed = time.perf_counter() - start
+
+            return {
+                "answer": result["text"],
+                "total_tokens": result["total_tokens"],
+                "latency_seconds": round(elapsed, 3),
+            }
         except Exception as e:
             raise AgentException(e, sys) from e
 
