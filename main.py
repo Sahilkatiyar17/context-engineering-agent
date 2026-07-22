@@ -8,6 +8,11 @@ from app.utils.exception import AgentException
 from app.utils.tracing import TracingConfigurator
 from app.evaluation.experiment_logger import ExperimentLogger
 
+from app.agents.graph import ResearchAgentGraph
+from app.utils.tracing import TracingConfigurator
+from app.evaluation.experiment_logger import ExperimentLogger
+import app.utils.logger  # noqa: F401
+
 # Importing this configures logging as a side effect (see app/utils/logger.py)
 import app.utils.logger  # noqa: F401
 
@@ -36,22 +41,29 @@ class ResearchAgentApp:
 
 
 if __name__ == "__main__":
-    TracingConfigurator.configure()   # project is fixed now, called once
+    TracingConfigurator.configure()
 
-    EXPERIMENT_ID = "basic_agent"     # this now becomes trace metadata, not a project name
+    EXPERIMENT_ID = "short_term_memory"
+    STRATEGY = "summary_after_6"
 
-    app = ResearchAgentApp()
+    graph = ResearchAgentGraph(summarize_after_n_messages=6)
     exp_logger = ExperimentLogger()
+    thread_id = f"{EXPERIMENT_ID}-session-2"
 
-    question = "What is PPO in reinforcement learning?"
-    result_state = app.graph.run(question, experiment_id=EXPERIMENT_ID, strategy="raw_search_no_memory")
+    conversation = [
+        # "What is PPO in reinforcement learning?",
+        # "How does it compare to TRPO?",
+        # "Can you explain the clipping objective in more detail?",
+        # "Can summarize everything we learned so far?",
+        # "can you explain me how DQN is different from above topics?",
+        # "what is a policy gradient in reinforcement learning?",
+        "what we discussed today? give me the topics name only",
+        
+    ]
 
-    exp_logger.log(
-        experiment_id=EXPERIMENT_ID,
-        strategy="raw_search_no_memory",
-        state=result_state,
-    )
-
-    print(f"\nexperiment_id={EXPERIMENT_ID}")
-    print("--- ANSWER ---")
-    print(result_state.answer)
+    for question in conversation:
+        print(f"[DEBUG] thread_id={thread_id}")
+        result_state = graph.run(question, thread_id=thread_id, experiment_id=EXPERIMENT_ID, strategy=STRATEGY)
+        print(f"[DEBUG] summary_present={bool(result_state.summary)} messages_count={len(result_state.messages)}")
+        exp_logger.log(experiment_id=EXPERIMENT_ID, strategy=STRATEGY, state=result_state)
+        print(f"\nQ: {question}\nA: {result_state.answer}")

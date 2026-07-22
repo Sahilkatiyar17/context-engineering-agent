@@ -3,6 +3,10 @@
 from __future__ import annotations
 from typing import Optional
 from pydantic import BaseModel, Field
+from typing import Annotated, Optional
+from pydantic import BaseModel, Field
+from langchain_core.messages import BaseMessage
+from langgraph.graph.message import add_messages
 
 
 class SearchResult(BaseModel):
@@ -12,21 +16,33 @@ class SearchResult(BaseModel):
     content: str
 
 
+from typing import Annotated, Optional
+from pydantic import BaseModel, Field
+from langchain_core.messages import BaseMessage
+from langgraph.graph.message import add_messages
+
+
+class SearchResult(BaseModel):
+    title: str
+    url: str
+    content: str
+
+
 class AgentState(BaseModel):
-    """
-    Shared state passed between every node in the LangGraph graph.
+    # add_messages reducer means new messages APPEND instead of overwrite,
+    # and it auto-assigns .id to each message (needed for RemoveMessage later)
+    messages: Annotated[list[BaseMessage], add_messages] = Field(default_factory=list)
+    summary: str = ""
 
-    Phase 1 keeps this deliberately minimal: a question comes in,
-    search results get attached, an answer comes out.
-    Later phases (memory, context pipeline, planner) will extend this
-    class rather than bolt fields onto a dict.
-    """
-
-    question: str
     search_results: list[SearchResult] = Field(default_factory=list)
     answer: Optional[str] = None
     total_tokens: Optional[int] = None
     latency_seconds: Optional[float] = None
 
-    def has_results(self) -> bool:
-        return len(self.search_results) > 0
+    @property
+    def latest_question(self) -> str:
+        """The most recent user message -- replaces the old standalone `question` field."""
+        for m in reversed(self.messages):
+            if m.type == "human":
+                return m.content
+        return ""

@@ -52,7 +52,7 @@ class ExperimentLogger:
                 timestamp=datetime.now(timezone.utc).isoformat(),
                 experiment_id=experiment_id,
                 strategy=strategy,
-                question=state.question,
+                question=state.latest_question,   # <-- was state.question
                 answer=state.answer or "",
                 total_tokens=state.total_tokens,
                 latency_seconds=state.latency_seconds,

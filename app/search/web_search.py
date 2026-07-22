@@ -21,7 +21,7 @@ class WebSearchClient:
     list[SearchResult] — never Tavily's raw dict shape.
     """
 
-    def __init__(self, max_results: int = 5):
+    def __init__(self, max_results: int = 2):
         settings = get_settings()
         self.max_results = max_results
         self._tool = self._build_tool(settings.tavily_api_key)

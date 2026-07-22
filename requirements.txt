@@ -1,1 +1,2 @@
 -e .
+langgraph-checkpoint-sqlite>=2.0

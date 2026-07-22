@@ -9,47 +9,51 @@ from app.agents.state import AgentState
 from app.search.web_search import WebSearchClient
 from app.utils.llm_client import LLMClient
 from app.utils.exception import AgentException
+import sys, time, logging
+from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, RemoveMessage
+
+from app.agents.state import AgentState
+from app.search.web_search import WebSearchClient
+from app.utils.llm_client import LLMClient
+from app.utils.exception import AgentException
+
+logger = logging.getLogger(__name__)
+
+
+import sys, time, logging
+from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, RemoveMessage
+
+from app.agents.state import AgentState
+from app.search.web_search import WebSearchClient
+from app.utils.llm_client import LLMClient
+from app.utils.exception import AgentException
 
 logger = logging.getLogger(__name__)
 
 
 class AgentNodes:
-    """
-    Holds the LangGraph node functions for Phase 1's baseline agent
-    (search -> LLM). Each public method matches the signature LangGraph
-    expects: (state: AgentState) -> dict of updated fields.
-
-    Wrapping nodes as bound methods (instead of free functions with
-    module-level clients) is what makes this OOP: dependencies are
-    injected once in __init__, not re-created or globally imported
-    inside each node.
-    """
-
-    def __init__(self, search_client: WebSearchClient, llm_client: LLMClient):
+    def __init__(self, search_client: WebSearchClient, llm_client: LLMClient,
+                 summarize_after_n_messages: int = 6, keep_last_n_verbatim: int = 2):
         self.search_client = search_client
         self.llm_client = llm_client
+        self.summarize_after_n_messages = summarize_after_n_messages
+        self.keep_last_n_verbatim = keep_last_n_verbatim
 
     def search_node(self, state: AgentState) -> dict:
-        """Runs web search for the question and attaches results to state."""
         try:
-            logger.info(f"[search_node] question={state.question!r}")
-            results = self.search_client.search(state.question)
-            return {"search_results": results}
+            results = self.search_client.search(state.latest_question)
+            return {"search_results": [r.model_dump() for r in results]}
         except Exception as e:
             raise AgentException(e, sys) from e
 
-    
-
-    def llm_node(self, state: AgentState) -> dict:
+    def chat_node(self, state: AgentState) -> dict:
         try:
-            logger.info(f"[llm_node] building answer from {len(state.search_results)} results")
-            messages = self._build_messages(state)
-
+            messages = self._build_prompt(state)
             start = time.perf_counter()
             result = self.llm_client.invoke_with_usage(messages)
             elapsed = time.perf_counter() - start
-
             return {
+                "messages": [AIMessage(content=result["text"])],
                 "answer": result["text"],
                 "total_tokens": result["total_tokens"],
                 "latency_seconds": round(elapsed, 3),
@@ -57,22 +61,32 @@ class AgentNodes:
         except Exception as e:
             raise AgentException(e, sys) from e
 
-    def _build_messages(self, state: AgentState) -> list:
-        """
-        Assembles the prompt. Deliberately inline and simple for Phase 1 --
-        app/prompts/templates.py (next in the flow) will formalize this
-        once we're comparing prompt versions.
-        """
-        context_block = "\n\n".join(
-            f"Source: {r.title} ({r.url})\n{r.content}" for r in state.search_results
-        )
-        system = SystemMessage(
-            content=(
-                "You are a research assistant. Answer the user's question using "
-                "only the provided sources. Be concise and factual."
+    def _build_prompt(self, state: AgentState) -> list:
+        prompt = []
+        if state.summary:
+            prompt.append(SystemMessage(content=f"Conversation summary so far:\n{state.summary}"))
+        if state.search_results:
+            sources = "\n\n".join(f"Source: {r.title} ({r.url})\n{r.content}" for r in state.search_results)
+            prompt.append(SystemMessage(content=f"Relevant sources:\n{sources}"))
+        prompt.extend(state.messages)
+        return prompt
+
+    def summarize_conversation(self, state: AgentState) -> dict:
+        try:
+            prompt = (
+                f"Existing summary:\n{state.summary}\n\nExtend the summary using the new conversation above."
+                if state.summary else "Summarize the conversation above."
             )
-        )
-        human = HumanMessage(
-            content=f"Question: {state.question}\n\nSources:\n{context_block}"
-        )
-        return [system, human]
+            messages_for_summary = state.messages + [HumanMessage(content=prompt)]
+            new_summary = self.llm_client.invoke(messages_for_summary)
+
+            messages_to_delete = state.messages[:-self.keep_last_n_verbatim]
+            return {
+                "summary": new_summary,
+                "messages": [RemoveMessage(id=m.id) for m in messages_to_delete],
+            }
+        except Exception as e:
+            raise AgentException(e, sys) from e
+
+    def should_summarize(self, state: AgentState) -> bool:
+        return len(state.messages) > self.summarize_after_n_messages
