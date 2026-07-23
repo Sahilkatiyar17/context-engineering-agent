@@ -43,27 +43,19 @@ class ResearchAgentApp:
 if __name__ == "__main__":
     TracingConfigurator.configure()
 
-    EXPERIMENT_ID = "short_term_memory"
-    STRATEGY = "summary_after_6"
+    USER_ID = "sahil"                                  # long-term memory scope -- persists across ALL threads
+    EXPERIMENT_ID = "long_term_memory"
+    STRATEGY = "mem0_top5_plus_summary"
+    THREAD_ID = "long_term_memory-session-2"            # conversation scope -- change manually for a fresh thread
 
-    graph = ResearchAgentGraph(summarize_after_n_messages=6)
+    graph = ResearchAgentGraph(user_id=USER_ID, summarize_after_n_messages=6)
     exp_logger = ExperimentLogger()
-    thread_id = f"{EXPERIMENT_ID}-session-2"
 
     conversation = [
-        # "What is PPO in reinforcement learning?",
-        # "How does it compare to TRPO?",
-        # "Can you explain the clipping objective in more detail?",
-        # "Can summarize everything we learned so far?",
-        # "can you explain me how DQN is different from above topics?",
-        # "what is a policy gradient in reinforcement learning?",
-        "what we discussed today? give me the topics name only",
-        
-    ]
+    "Can you remember that i like python codes.",]
 
     for question in conversation:
-        print(f"[DEBUG] thread_id={thread_id}")
-        result_state = graph.run(question, thread_id=thread_id, experiment_id=EXPERIMENT_ID, strategy=STRATEGY)
-        print(f"[DEBUG] summary_present={bool(result_state.summary)} messages_count={len(result_state.messages)}")
+        result_state = graph.run(question, thread_id=THREAD_ID, experiment_id=EXPERIMENT_ID, strategy=STRATEGY)
         exp_logger.log(experiment_id=EXPERIMENT_ID, strategy=STRATEGY, state=result_state)
         print(f"\nQ: {question}\nA: {result_state.answer}")
+        print(f"[long_term_memories_used={len(result_state.long_term_memories)}]")

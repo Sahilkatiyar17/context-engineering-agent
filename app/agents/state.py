@@ -33,8 +33,8 @@ class AgentState(BaseModel):
     # and it auto-assigns .id to each message (needed for RemoveMessage later)
     messages: Annotated[list[BaseMessage], add_messages] = Field(default_factory=list)
     summary: str = ""
-
-    search_results: list[SearchResult] = Field(default_factory=list)
+    long_term_memories: list[str] = Field(default_factory=list)
+    search_results: list[dict] = Field(default_factory=list)
     answer: Optional[str] = None
     total_tokens: Optional[int] = None
     latency_seconds: Optional[float] = None

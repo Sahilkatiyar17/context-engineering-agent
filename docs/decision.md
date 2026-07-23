@@ -61,3 +61,23 @@ per run, rejected.
 **Why:** Wanted explicit control over when a conversation is "new" vs.
 "continuing" — sometimes intentionally re-running the same session to
 extend it, sometimes starting fresh. Auto-generation removes that choice.
+
+## Phase 3 — Long-term memory (Mem0 Cloud)
+
+**Decision:** Mem0 Cloud (free tier), no self-hosted setup.
+
+**Why:** Free tier (10K memories/1K retrieval calls/month) fully covers
+this project's needs. Self-hosting only changes where the vector store
+lives, not the extraction/retrieval algorithm itself -- no meaningful
+capability trade-off for a solo project at this scale, and would add
+ops overhead for no benefit right now.
+
+**Scoping:** long-term memory keyed by user_id (persists across all
+threads), separate from short-term memory keyed by thread_id (dies with
+the conversation). Verified both: same-user recall across a brand-new
+thread works; a different user_id in a fresh thread has no access to
+those facts (isolation confirmed).
+
+**Implementation:** app/memory/long_term.py (Mem0Client wrapper),
+graph flow: recall_memory -> search -> chat -> remember -> [summarize
+conditional, unchanged from Phase 2].
