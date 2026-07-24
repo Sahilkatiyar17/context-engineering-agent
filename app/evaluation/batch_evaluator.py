@@ -40,7 +40,7 @@ class BatchEvaluator:
             for i, row in enumerate(rows):
                 evaluated_rows.append(self._evaluate_row(row))
                 if i < len(rows) - 1:
-                    time.sleep(0)  # throttle to stay under Groq free-tier RPM
+                    time.sleep(4)  # throttle to stay under Groq free-tier RPM
 
             self._write_jsonl(output_path, evaluated_rows)
             logger.info(f"Wrote {len(evaluated_rows)} evaluated rows to {output_path}")

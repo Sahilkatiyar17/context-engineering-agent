@@ -82,7 +82,35 @@ those facts (isolation confirmed).
 graph flow: recall_memory -> search -> chat -> remember -> [summarize
 conditional, unchanged from Phase 2].
 
+## Phase 4 — Filter stage caught a bad search result entirely
 
+**Observation:** On the final synthesis question ("Summarize everything we've
+discussed about PPO, and remind me how I like my answers formatted"), the
+agent still triggered a web search -- the fixed pipeline searches every turn,
+regardless of whether the question needs it. For this question, Tavily
+returned irrelevant results (in one run, unrelated Federal Register healthcare
+regulation text -- nothing to do with PPO).
+
+In the raw/baseline pipeline, that irrelevant content still got pushed into
+the prompt, costing tokens for zero benefit. In the fully-engineered pipeline,
+the relevance filter (RelevanceScoreFilter, min_score=0.3) scored every one
+of those search results below threshold and dropped all of them -- reducing
+that turn's search_results from 5 down to 0.
+
+**Effect:** With no irrelevant search content competing for space, the answer
+was generated almost entirely from short-term memory (the running conversation
+summary) and long-term memory (Mem0-retrieved facts, e.g. the stated bullet-
+point preference) -- exactly the sources that actually mattered for a
+synthesis question. Fewer tokens spent, and a cleaner, better-grounded answer,
+because nothing irrelevant was diluting the context.
+
+**Why this matters:** This is filtering doing its job correctly under a real
+failure condition, not just trimming already-good results. It's also a
+concrete illustration of why a context planner (deciding whether to search
+at all, per question) is the natural next step -- the filter caught the
+damage *after* an unnecessary search already happened; a planner could avoid
+triggering that search in the first place, saving the Tavily call itself,
+not just its output.
 
 
 ## Phase 6 — Evaluation dependency chain fragility
