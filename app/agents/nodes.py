@@ -6,6 +6,9 @@ from app.search.web_search import WebSearchClient
 from app.utils.llm_client import LLMClient
 from app.memory.long_term import LongTermMemory
 from app.utils.exception import AgentException
+from app.context.filters import ContextFilter
+from app.context.ranking import ContextRanker
+
 
 logger = logging.getLogger(__name__)
 
@@ -13,13 +16,15 @@ logger = logging.getLogger(__name__)
 class AgentNodes:
     def __init__(self, search_client: WebSearchClient, llm_client: LLMClient,
                  long_term_memory: LongTermMemory, user_id: str,
-                 summarize_after_n_messages: int = 6, keep_last_n_verbatim: int = 2):
+                 summarize_after_n_messages: int = 6, keep_last_n_verbatim: int = 2,context_filter: ContextFilter = None,context_ranker: ContextRanker = None):
         self.search_client = search_client
         self.llm_client = llm_client
         self.long_term_memory = long_term_memory
         self.user_id = user_id
         self.summarize_after_n_messages = summarize_after_n_messages
         self.keep_last_n_verbatim = keep_last_n_verbatim
+        self.context_filter = context_filter
+        self.context_ranker = context_ranker
 
     def recall_memory_node(self, state: AgentState) -> dict:
         try:
@@ -49,6 +54,19 @@ class AgentNodes:
             }
         except Exception as e:
             raise AgentException(e, sys) from e
+    
+    
+    
+    def filter_context_node(self, state: AgentState) -> dict:
+        try:
+            before = len(state.search_results)
+            filtered = self.context_filter.apply(state.search_results)
+            logger.info(f"[filter_context] {before} -> {len(filtered)} search results")
+            return {"search_results": filtered}
+        except Exception as e:
+            raise AgentException(e, sys) from e
+    
+    
 
     def _build_prompt(self, state: AgentState) -> list:
         prompt = []
@@ -88,3 +106,10 @@ class AgentNodes:
 
     def should_summarize(self, state: AgentState) -> bool:
         return len(state.messages) > self.summarize_after_n_messages
+    
+    def rank_context_node(self, state: AgentState) -> dict:
+        try:
+            ranked = self.context_ranker.apply(state.latest_question, state.search_results)
+            return {"search_results": ranked}
+        except Exception as e:
+            raise AgentException(e, sys) from e

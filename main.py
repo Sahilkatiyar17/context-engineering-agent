@@ -12,6 +12,12 @@ from app.agents.graph import ResearchAgentGraph
 from app.utils.tracing import TracingConfigurator
 from app.evaluation.experiment_logger import ExperimentLogger
 import app.utils.logger  # noqa: F401
+from app.context.filters import NoOpFilter, RelevanceScoreFilter
+from app.context.ranking import NoOpRanker, CohereRerankRanker
+
+from experiments.dataset import EXPERIMENT_DATASET
+
+
 
 # Importing this configures logging as a side effect (see app/utils/logger.py)
 import app.utils.logger  # noqa: F401
@@ -43,19 +49,38 @@ class ResearchAgentApp:
 if __name__ == "__main__":
     TracingConfigurator.configure()
 
-    USER_ID = "sahil"                                  # long-term memory scope -- persists across ALL threads
-    EXPERIMENT_ID = "long_term_memory"
-    STRATEGY = "mem0_top5_plus_summary"
-    THREAD_ID = "long_term_memory-session-2"            # conversation scope -- change manually for a fresh thread
+    USER_ID = "sahil"
+    EXPERIMENT_ID = "context_engineering"
+    STRATEGY = "filtered_0.3_cohere_reranked"
+    THREAD_ID = "ctx-exp-filtered_0.3_cohere_reranked-1"          # fresh thread for this new strategy
 
-    graph = ResearchAgentGraph(user_id=USER_ID, summarize_after_n_messages=6)
+              
+
+
+    graph = ResearchAgentGraph(
+    user_id=USER_ID,
+    context_filter=RelevanceScoreFilter(min_score=0.3),
+    context_ranker=CohereRerankRanker(),                 # swap to RelevanceScoreFilter(min_score=0.3) for run 2
+)
     exp_logger = ExperimentLogger()
 
-    conversation = [
-    "Can you remember that i like python codes.",]
+    print(f"Running dataset -- experiment_id={EXPERIMENT_ID} strategy={STRATEGY} thread_id={THREAD_ID}\n")
 
-    for question in conversation:
-        result_state = graph.run(question, thread_id=THREAD_ID, experiment_id=EXPERIMENT_ID, strategy=STRATEGY)
-        exp_logger.log(experiment_id=EXPERIMENT_ID, strategy=STRATEGY, state=result_state)
-        print(f"\nQ: {question}\nA: {result_state.answer}")
-        print(f"[long_term_memories_used={len(result_state.long_term_memories)}]")
+    for item in EXPERIMENT_DATASET:
+        result_state = graph.run(
+            item["question"],
+            thread_id=THREAD_ID,
+            experiment_id=EXPERIMENT_ID,
+            strategy=STRATEGY,
+        )
+        exp_logger.log(
+            experiment_id=EXPERIMENT_ID,
+            strategy=STRATEGY,
+            state=result_state,
+            notes=item["id"],   # tags the row with q1/q2/... so results.jsonl stays traceable back to the dataset
+        )
+        print(f"[{item['id']}] Q: {item['question']}")
+        print(f"[{item['id']}] A: {result_state.answer}")
+        print(f"[{item['id']}] tokens={result_state.total_tokens} latency={result_state.latency_seconds}s\n")
+
+    print("Dataset run complete.")

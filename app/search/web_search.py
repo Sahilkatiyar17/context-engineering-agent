@@ -46,15 +46,14 @@ class WebSearchClient:
             raise AgentException(e, sys) from e
 
     def _normalize(self, raw_response: dict) -> list[SearchResult]:
-        """Converts Tavily's raw response into our own SearchResult objects."""
         raw_results = raw_response.get("results", [])
         results = [
             SearchResult(
                 title=item.get("title", ""),
                 url=item.get("url", ""),
                 content=item.get("content", ""),
+                score=item.get("score", 0.0),
             )
             for item in raw_results
         ]
-        logger.info(f"Normalized {len(results)} search results")
         return results

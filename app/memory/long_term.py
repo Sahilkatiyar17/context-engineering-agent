@@ -74,3 +74,11 @@ class LongTermMemory:
             elif isinstance(item, dict):
                 memories.append(item.get("memory", str(item)))
         return memories
+    
+    def delete_all(self, user_id: str) -> None:
+        """Wipes all stored memories for this user -- used to reset between experiment runs for a fair comparison."""
+        try:
+            self._client.delete_all(user_id=user_id)
+            logger.info(f"Deleted all long-term memories for user_id={user_id}")
+        except Exception as e:
+            raise AgentException(e, sys) from e

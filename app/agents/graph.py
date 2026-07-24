@@ -11,7 +11,8 @@ from app.search.web_search import WebSearchClient
 from app.utils.llm_client import LLMClient
 from app.memory.long_term import LongTermMemory
 from app.utils.exception import AgentException
-
+from app.context.filters import ContextFilter, NoOpFilter
+from app.context.ranking import NoOpRanker, ContextRanker
 logger = logging.getLogger(__name__)
 
 DB_PATH = Path("data") / "checkpoints.db"
@@ -20,13 +21,15 @@ DB_PATH = Path("data") / "checkpoints.db"
 class ResearchAgentGraph:
     def __init__(self, user_id: str, search_client: WebSearchClient | None = None,
                  llm_client: LLMClient | None = None, long_term_memory: LongTermMemory | None = None,
-                 summarize_after_n_messages: int = 6, db_path: Path = DB_PATH):
+                 summarize_after_n_messages: int = 6, db_path: Path = DB_PATH,context_filter: ContextFilter | None = None,context_ranker: ContextRanker | None = None):
         self.nodes = AgentNodes(
             search_client=search_client or WebSearchClient(),
             llm_client=llm_client or LLMClient(),
             long_term_memory=long_term_memory or LongTermMemory(),
             user_id=user_id,
             summarize_after_n_messages=summarize_after_n_messages,
+            context_filter=context_filter or NoOpFilter(),
+            context_ranker=context_ranker or NoOpRanker(),
         )
         self.checkpointer = self._build_checkpointer(db_path)
         self._graph = self._build_graph()
@@ -46,13 +49,17 @@ class ResearchAgentGraph:
 
             builder.add_node("recall_memory", self.nodes.recall_memory_node)
             builder.add_node("search", self.nodes.search_node)
+            builder.add_node("filter_context", self.nodes.filter_context_node)
+            builder.add_node("rank_context", self.nodes.rank_context_node)
             builder.add_node("chat", self.nodes.chat_node)
             builder.add_node("remember", self.nodes.remember_node)
             builder.add_node("summarize", self.nodes.summarize_conversation)
 
             builder.set_entry_point("recall_memory")
             builder.add_edge("recall_memory", "search")
-            builder.add_edge("search", "chat")
+            builder.add_edge("search", "filter_context")
+            builder.add_edge("filter_context", "rank_context")
+            builder.add_edge("rank_context", "chat")
             builder.add_edge("chat", "remember")
             builder.add_conditional_edges("remember", self.nodes.should_summarize, {True: "summarize", False: END})
             builder.add_edge("summarize", END)

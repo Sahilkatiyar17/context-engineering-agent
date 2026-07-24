@@ -22,10 +22,12 @@ from langchain_core.messages import BaseMessage
 from langgraph.graph.message import add_messages
 
 
+# in state.py or wherever SearchResult still lives (used only internally now)
 class SearchResult(BaseModel):
     title: str
     url: str
     content: str
+    score: float = 0.0   # Tavily's own relevance score, currently discarded
 
 
 class AgentState(BaseModel):
