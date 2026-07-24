@@ -14,6 +14,8 @@ from app.evaluation.experiment_logger import ExperimentLogger
 import app.utils.logger  # noqa: F401
 from app.context.filters import NoOpFilter, RelevanceScoreFilter
 from app.context.ranking import NoOpRanker, CohereRerankRanker
+from app.context.deduplication import SimilarityDeduplicator
+from app.context.compression import NoOpCompressor, LLMCompressor
 
 from experiments.dataset import EXPERIMENT_DATASET
 
@@ -51,17 +53,16 @@ if __name__ == "__main__":
 
     USER_ID = "sahil"
     EXPERIMENT_ID = "context_engineering"
-    STRATEGY = "filtered_0.3_cohere_reranked"
-    THREAD_ID = "ctx-exp-filtered_0.3_cohere_reranked-1"          # fresh thread for this new strategy
-
-              
-
+    STRATEGY = "filtered_0.3_deduped_cohere_reranked_compressed"
+    THREAD_ID = "ctx-exp-filtered_0.3_deduped_cohere_reranked_compressed-1"
 
     graph = ResearchAgentGraph(
-    user_id=USER_ID,
-    context_filter=RelevanceScoreFilter(min_score=0.3),
-    context_ranker=CohereRerankRanker(),                 # swap to RelevanceScoreFilter(min_score=0.3) for run 2
-)
+        user_id=USER_ID,
+        context_filter=RelevanceScoreFilter(min_score=0.3),
+        context_deduplicator=SimilarityDeduplicator(similarity_threshold=0.85),
+        context_ranker=CohereRerankRanker(),
+        context_compressor=LLMCompressor(),
+    )
     exp_logger = ExperimentLogger()
 
     print(f"Running dataset -- experiment_id={EXPERIMENT_ID} strategy={STRATEGY} thread_id={THREAD_ID}\n")
@@ -77,7 +78,7 @@ if __name__ == "__main__":
             experiment_id=EXPERIMENT_ID,
             strategy=STRATEGY,
             state=result_state,
-            notes=item["id"],   # tags the row with q1/q2/... so results.jsonl stays traceable back to the dataset
+            notes=item["id"],
         )
         print(f"[{item['id']}] Q: {item['question']}")
         print(f"[{item['id']}] A: {result_state.answer}")

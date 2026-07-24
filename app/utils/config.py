@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     app_env: str = "dev"
     mem0_api_key: str = ""
     cohere_api_key: str = ""
+    gemini_api_key: str = ""
 
 
 @lru_cache

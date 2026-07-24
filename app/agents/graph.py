@@ -12,7 +12,9 @@ from app.utils.llm_client import LLMClient
 from app.memory.long_term import LongTermMemory
 from app.utils.exception import AgentException
 from app.context.filters import ContextFilter, NoOpFilter
-from app.context.ranking import NoOpRanker, ContextRanker
+from app.context.ranking import NoOpRanker, ContextRanker 
+from app.context.deduplication import ContextDeduplicator, NoOpDeduplicator
+from app.context.compression import ContextCompressor, NoOpCompressor
 logger = logging.getLogger(__name__)
 
 DB_PATH = Path("data") / "checkpoints.db"
@@ -21,7 +23,8 @@ DB_PATH = Path("data") / "checkpoints.db"
 class ResearchAgentGraph:
     def __init__(self, user_id: str, search_client: WebSearchClient | None = None,
                  llm_client: LLMClient | None = None, long_term_memory: LongTermMemory | None = None,
-                 summarize_after_n_messages: int = 6, db_path: Path = DB_PATH,context_filter: ContextFilter | None = None,context_ranker: ContextRanker | None = None):
+                 summarize_after_n_messages: int = 6, db_path: Path = DB_PATH,context_filter: ContextFilter | None = None,context_ranker: ContextRanker | None = None,
+                 context_deduplicator: ContextDeduplicator | None = None, context_compressor: ContextCompressor | None = None):
         self.nodes = AgentNodes(
             search_client=search_client or WebSearchClient(),
             llm_client=llm_client or LLMClient(),
@@ -30,6 +33,8 @@ class ResearchAgentGraph:
             summarize_after_n_messages=summarize_after_n_messages,
             context_filter=context_filter or NoOpFilter(),
             context_ranker=context_ranker or NoOpRanker(),
+            context_deduplicator=context_deduplicator or NoOpDeduplicator(),
+            context_compressor=context_compressor or NoOpCompressor(),
         )
         self.checkpointer = self._build_checkpointer(db_path)
         self._graph = self._build_graph()
@@ -50,7 +55,9 @@ class ResearchAgentGraph:
             builder.add_node("recall_memory", self.nodes.recall_memory_node)
             builder.add_node("search", self.nodes.search_node)
             builder.add_node("filter_context", self.nodes.filter_context_node)
+            builder.add_node("dedupe_context", self.nodes.dedupe_context_node)
             builder.add_node("rank_context", self.nodes.rank_context_node)
+            builder.add_node("compress_context", self.nodes.compress_context_node)
             builder.add_node("chat", self.nodes.chat_node)
             builder.add_node("remember", self.nodes.remember_node)
             builder.add_node("summarize", self.nodes.summarize_conversation)
@@ -58,8 +65,10 @@ class ResearchAgentGraph:
             builder.set_entry_point("recall_memory")
             builder.add_edge("recall_memory", "search")
             builder.add_edge("search", "filter_context")
-            builder.add_edge("filter_context", "rank_context")
-            builder.add_edge("rank_context", "chat")
+            builder.add_edge("filter_context", "dedupe_context")
+            builder.add_edge("dedupe_context", "rank_context")
+            builder.add_edge("rank_context", "compress_context")
+            builder.add_edge("compress_context", "chat")
             builder.add_edge("chat", "remember")
             builder.add_conditional_edges("remember", self.nodes.should_summarize, {True: "summarize", False: END})
             builder.add_edge("summarize", END)

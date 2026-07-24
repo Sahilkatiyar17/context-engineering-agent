@@ -8,6 +8,7 @@ from app.memory.long_term import LongTermMemory
 from app.utils.exception import AgentException
 from app.context.filters import ContextFilter
 from app.context.ranking import ContextRanker
+from app.context.deduplication import ContextDeduplicator
 
 
 logger = logging.getLogger(__name__)
@@ -16,7 +17,8 @@ logger = logging.getLogger(__name__)
 class AgentNodes:
     def __init__(self, search_client: WebSearchClient, llm_client: LLMClient,
                  long_term_memory: LongTermMemory, user_id: str,
-                 summarize_after_n_messages: int = 6, keep_last_n_verbatim: int = 2,context_filter: ContextFilter = None,context_ranker: ContextRanker = None):
+                 summarize_after_n_messages: int = 6, keep_last_n_verbatim: int = 2,context_filter: ContextFilter = None,context_ranker: ContextRanker = None,
+                 context_deduplicator: ContextDeduplicator = None,context_compressor: ContextCompressor = None):
         self.search_client = search_client
         self.llm_client = llm_client
         self.long_term_memory = long_term_memory
@@ -25,6 +27,8 @@ class AgentNodes:
         self.keep_last_n_verbatim = keep_last_n_verbatim
         self.context_filter = context_filter
         self.context_ranker = context_ranker
+        self.context_deduplicator = context_deduplicator
+        self.context_compressor = context_compressor
 
     def recall_memory_node(self, state: AgentState) -> dict:
         try:
@@ -111,5 +115,23 @@ class AgentNodes:
         try:
             ranked = self.context_ranker.apply(state.latest_question, state.search_results)
             return {"search_results": ranked}
+        except Exception as e:
+            raise AgentException(e, sys) from e
+    
+    def dedupe_context_node(self, state: AgentState) -> dict:
+        try:
+            before = len(state.search_results)
+            deduped = self.context_deduplicator.apply(state.search_results)
+            logger.info(f"[dedupe_context] {before} -> {len(deduped)} search results")
+            return {"search_results": deduped}
+        except Exception as e:
+            raise AgentException(e, sys) from e
+        
+    def compress_context_node(self, state: AgentState) -> dict:
+        try:
+            before = len(state.search_results)
+            compressed = self.context_compressor.apply(state.search_results)
+            logger.info(f"[compress_context] {before} results -> compressed block")
+            return {"search_results": compressed}
         except Exception as e:
             raise AgentException(e, sys) from e
