@@ -18,7 +18,7 @@ class LongTermMemory:
     that user ever has, which is the whole point of "long-term."
     """
 
-    def __init__(self, top_k: int = 5):
+    def __init__(self, top_k: int = 10):
         settings = get_settings()
         self.top_k = top_k
         self._client = self._build_client(settings.mem0_api_key)

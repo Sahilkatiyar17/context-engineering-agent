@@ -53,13 +53,13 @@ if __name__ == "__main__":
 
     USER_ID = "sahil"
     EXPERIMENT_ID = "context_engineering"
-    STRATEGY = "filtered_0.3_deduped_cohere_reranked_compressed"
-    THREAD_ID = "ctx-exp-filtered_0.3_deduped_cohere_reranked_compressed-1"
+    STRATEGY = "tight_filter_wide_memory"
+    THREAD_ID = "tight_filter_wide_memory-1"
 
     graph = ResearchAgentGraph(
         user_id=USER_ID,
-        context_filter=RelevanceScoreFilter(min_score=0.3),
-        context_deduplicator=SimilarityDeduplicator(similarity_threshold=0.85),
+        context_filter=RelevanceScoreFilter(min_score=0.5),
+        context_deduplicator=SimilarityDeduplicator(similarity_threshold=0.75),
         context_ranker=CohereRerankRanker(),
         context_compressor=LLMCompressor(),
     )

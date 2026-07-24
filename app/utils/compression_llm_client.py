@@ -24,6 +24,15 @@ class CompressionLLMClient:
     def invoke(self, prompt: str) -> str:
         try:
             response = self._llm.invoke(prompt)
-            return response.content
+            return self._flatten(response.content)
         except Exception as e:
             raise AgentException(e, sys) from e
+
+    def _flatten(self, content) -> str:
+        """Gemini can return content as a string OR a list of content parts -- always normalize to one string."""
+        if isinstance(content, list):
+            return "\n".join(
+                part.get("text", str(part)) if isinstance(part, dict) else str(part)
+                for part in content
+            )
+        return str(content)

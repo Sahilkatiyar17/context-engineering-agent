@@ -9,6 +9,7 @@ from app.utils.exception import AgentException
 from app.context.filters import ContextFilter
 from app.context.ranking import ContextRanker
 from app.context.deduplication import ContextDeduplicator
+from app.context.compression import ContextCompressor
 
 
 logger = logging.getLogger(__name__)

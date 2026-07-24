@@ -21,7 +21,7 @@ class WebSearchClient:
     list[SearchResult] — never Tavily's raw dict shape.
     """
 
-    def __init__(self, max_results: int = 2):
+    def __init__(self, max_results: int = 5):
         settings = get_settings()
         self.max_results = max_results
         self._tool = self._build_tool(settings.tavily_api_key)
@@ -51,9 +51,16 @@ class WebSearchClient:
             SearchResult(
                 title=item.get("title", ""),
                 url=item.get("url", ""),
-                content=item.get("content", ""),
+                content=self._flatten_content(item.get("content", "")),
                 score=item.get("score", 0.0),
             )
             for item in raw_results
         ]
+        logger.info(f"Normalized {len(results)} search results")
         return results
+
+    def _flatten_content(self, content) -> str:
+        """Tavily can return content as either a single string or a list of chunks -- always normalize to one string."""
+        if isinstance(content, list):
+            return "\n".join(str(c) for c in content)
+        return str(content)

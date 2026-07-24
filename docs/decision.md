@@ -81,3 +81,17 @@ those facts (isolation confirmed).
 **Implementation:** app/memory/long_term.py (Mem0Client wrapper),
 graph flow: recall_memory -> search -> chat -> remember -> [summarize
 conditional, unchanged from Phase 2].
+
+
+
+
+## Phase 6 — Evaluation dependency chain fragility
+
+Hit significant version-compatibility issues chaining ragas + langchain_community
++ langchain_core + langchain_groq together -- each library's latest version
+assumed different versions of the others. Resolved by pinning ragas<0.4 (0.4.x
+has a hardcoded broken import to a relocated langchain_community submodule)
+and patching that file directly. Also hit two Groq model deprecations mid-project
+(deepseek-r1-distill-llama-70b, and llama-3.3-70b-versatile is deprecated with
+an 08/16/26 shutdown -- migration still pending). Lesson: freeze requirements.txt
+immediately after any environment that's confirmed working, don't wait.

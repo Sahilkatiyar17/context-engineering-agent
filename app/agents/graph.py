@@ -23,7 +23,7 @@ DB_PATH = Path("data") / "checkpoints.db"
 class ResearchAgentGraph:
     def __init__(self, user_id: str, search_client: WebSearchClient | None = None,
                  llm_client: LLMClient | None = None, long_term_memory: LongTermMemory | None = None,
-                 summarize_after_n_messages: int = 6, db_path: Path = DB_PATH,context_filter: ContextFilter | None = None,context_ranker: ContextRanker | None = None,
+                 summarize_after_n_messages: int = 10, db_path: Path = DB_PATH,context_filter: ContextFilter | None = None,context_ranker: ContextRanker | None = None,
                  context_deduplicator: ContextDeduplicator | None = None, context_compressor: ContextCompressor | None = None):
         self.nodes = AgentNodes(
             search_client=search_client or WebSearchClient(),
